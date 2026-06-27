@@ -1,0 +1,50 @@
+# Python (Virtual Env & Caches)
+venv/
+.venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+services/prediction/venv/
+services/prediction/scratch/
+
+# Node (Frontend Modules & Builds)
+node_modules/
+jspm_packages/
+.pnp
+.pnp.js
+dist/
+build/
+.eslintcache
+*.log
+
+# Go (Compiled Binaries & Tooling)
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+out/
+go.work
+
+# Secrets and Local Configurations
+.env
+.env.local
+.env.*.local
+*.env
+
+# IDE and OS Specific
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+.DS_Store
+.DS_Store?
+ehthumbs.db
+Thumbs.db
