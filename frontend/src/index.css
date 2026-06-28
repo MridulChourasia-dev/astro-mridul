@@ -418,3 +418,52 @@ h1, h2, h3, h4 {
 .custom-table tbody tr:hover {
   background: rgba(255, 255, 255, 0.02);
 }
+
+/* Autocomplete Suggestions Dropdown */
+.suggestions-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(12, 8, 31, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  z-index: 1010;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), var(--shadow-glow-purple);
+  margin-top: 4px;
+}
+
+.suggestion-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 13px;
+  color: var(--text-primary);
+  transition: var(--transition-smooth);
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover {
+  background: rgba(168, 85, 247, 0.15);
+  color: var(--color-primary-light);
+}
+
+.suggestion-item-title {
+  font-weight: 600;
+  display: block;
+}
+
+.suggestion-item-subtitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: block;
+  margin-top: 2px;
+}
+

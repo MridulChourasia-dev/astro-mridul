@@ -120,6 +120,10 @@ export default function App() {
   const [longitude, setLongitude] = useState(77.2090);
   const [timezone, setTimezone] = useState('Asia/Kolkata');
   const [chartError, setChartError] = useState('');
+  const [birthPlace, setBirthPlace] = useState('');
+  const [birthPlaceSuggestions, setBirthPlaceSuggestions] = useState<any[]>([]);
+  const [isSearchingBirthPlace, setIsSearchingBirthPlace] = useState(false);
+  const birthLastSelectedRef = useRef('');
 
   // Daily Horoscope State
   const [horoscope, setHoroscope] = useState<DailyHoroscope | null>(null);
@@ -143,6 +147,10 @@ export default function App() {
   const [compTimezone, setCompTimezone] = useState('Asia/Kolkata');
   const [compResult, setCompResult] = useState<any | null>(null);
   const [isCompLoading, setIsCompLoading] = useState(false);
+  const [compBirthPlace, setCompBirthPlace] = useState('');
+  const [compBirthPlaceSuggestions, setCompBirthPlaceSuggestions] = useState<any[]>([]);
+  const [isSearchingCompBirthPlace, setIsSearchingCompBirthPlace] = useState(false);
+  const compLastSelectedRef = useRef('');
 
   // Reports State
   const [reports, setReports] = useState<ReportInfo[]>([]);
@@ -175,6 +183,94 @@ export default function App() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
+
+  // Debounced search for self Birthplace
+  useEffect(() => {
+    if (!birthPlace || birthPlace.trim().length < 2) {
+      setBirthPlaceSuggestions([]);
+      return;
+    }
+    if (birthPlace === birthLastSelectedRef.current) {
+      return;
+    }
+
+    const delayDebounce = setTimeout(() => {
+      setIsSearchingBirthPlace(true);
+      fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(birthPlace)}&count=5&language=en&format=json`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.results) {
+            setBirthPlaceSuggestions(data.results);
+          } else {
+            setBirthPlaceSuggestions([]);
+          }
+        })
+        .catch(err => {
+          console.error("Geocoding error", err);
+        })
+        .finally(() => {
+          setIsSearchingBirthPlace(false);
+        });
+    }, 500);
+
+    return () => clearTimeout(delayDebounce);
+  }, [birthPlace]);
+
+  // Debounced search for partner Birthplace
+  useEffect(() => {
+    if (!compBirthPlace || compBirthPlace.trim().length < 2) {
+      setCompBirthPlaceSuggestions([]);
+      return;
+    }
+    if (compBirthPlace === compLastSelectedRef.current) {
+      return;
+    }
+
+    const delayDebounce = setTimeout(() => {
+      setIsSearchingCompBirthPlace(true);
+      fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(compBirthPlace)}&count=5&language=en&format=json`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.results) {
+            setCompBirthPlaceSuggestions(data.results);
+          } else {
+            setCompBirthPlaceSuggestions([]);
+          }
+        })
+        .catch(err => {
+          console.error("Geocoding error", err);
+        })
+        .finally(() => {
+          setIsSearchingCompBirthPlace(false);
+        });
+    }, 500);
+
+    return () => clearTimeout(delayDebounce);
+  }, [compBirthPlace]);
+
+  // Suggestion selection handler
+  const handleSelectSuggestion = (sug: any, isPartner: boolean) => {
+    const displayName = `${sug.name}${sug.admin1 ? `, ${sug.admin1}` : ''}${sug.country ? `, ${sug.country}` : ''}`;
+    const lat = parseFloat(sug.latitude.toFixed(4));
+    const lon = parseFloat(sug.longitude.toFixed(4));
+    const tz = sug.timezone || 'UTC';
+
+    if (isPartner) {
+      compLastSelectedRef.current = displayName;
+      setCompBirthPlace(displayName);
+      setCompLatitude(lat);
+      setCompLongitude(lon);
+      setCompTimezone(tz);
+      setCompBirthPlaceSuggestions([]);
+    } else {
+      birthLastSelectedRef.current = displayName;
+      setBirthPlace(displayName);
+      setLatitude(lat);
+      setLongitude(lon);
+      setTimezone(tz);
+      setBirthPlaceSuggestions([]);
+    }
+  };
 
   const fetchUserProfile = async () => {
     try {
@@ -333,6 +429,8 @@ export default function App() {
         setSelectedChart(newChart);
         setIsCreatingChart(false);
         setChartName('');
+        setBirthPlace('');
+        setBirthPlaceSuggestions([]);
       } else {
         const data = await res.json();
         setChartError(data.error || 'Failed to create chart');
@@ -800,13 +898,45 @@ export default function App() {
                   </div>
                 </div>
 
+                <div className="form-group" style={{ marginBottom: 0, position: 'relative' }}>
+                  <label className="form-label">Birthplace (Type City to Auto-Fill)</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. New York, London, Delhi" 
+                    value={birthPlace} 
+                    onChange={e => setBirthPlace(e.target.value)} 
+                  />
+                  {isSearchingBirthPlace && (
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>Searching locations...</div>
+                  )}
+                  {birthPlaceSuggestions.length > 0 && (
+                    <div className="suggestions-list">
+                      {birthPlaceSuggestions.map((sug, idx) => (
+                        <div 
+                          key={idx} 
+                          className="suggestion-item" 
+                          onClick={() => handleSelectSuggestion(sug, false)}
+                        >
+                          <span className="suggestion-item-title">
+                            {sug.name}{sug.admin1 ? `, ${sug.admin1}` : ''}{sug.country ? `, ${sug.country}` : ''}
+                          </span>
+                          <span className="suggestion-item-subtitle">
+                            Lat: {sug.latitude.toFixed(4)}, Lon: {sug.longitude.toFixed(4)} | TZ: {sug.timezone || 'UTC'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <button 
                   type="button" 
                   onClick={handleDetectLocation} 
                   className="btn btn-secondary" 
                   style={{ padding: '8px 12px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}
                 >
-                  📍 Detect Current Location
+                  📍 Detect Current Location (GPS)
                 </button>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -828,7 +958,17 @@ export default function App() {
                 {chartError && <div style={{ color: 'var(--color-danger)', fontSize: '13px' }}>{chartError}</div>}
 
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '8px' }}>
-                  <button type="button" onClick={() => setIsCreatingChart(false)} className="btn btn-secondary">Cancel</button>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setIsCreatingChart(false);
+                      setBirthPlace('');
+                      setBirthPlaceSuggestions([]);
+                    }} 
+                    className="btn btn-secondary"
+                  >
+                    Cancel
+                  </button>
                   <button type="submit" className="btn btn-primary">Generate</button>
                 </div>
               </form>
@@ -1099,13 +1239,45 @@ export default function App() {
                   </div>
                 </div>
 
+                <div className="form-group" style={{ marginBottom: 0, position: 'relative' }}>
+                  <label className="form-label">Partner's Birthplace (Type City to Auto-Fill)</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. Mumbai, New York, Tokyo" 
+                    value={compBirthPlace} 
+                    onChange={e => setCompBirthPlace(e.target.value)} 
+                  />
+                  {isSearchingCompBirthPlace && (
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>Searching locations...</div>
+                  )}
+                  {compBirthPlaceSuggestions.length > 0 && (
+                    <div className="suggestions-list">
+                      {compBirthPlaceSuggestions.map((sug, idx) => (
+                        <div 
+                          key={idx} 
+                          className="suggestion-item" 
+                          onClick={() => handleSelectSuggestion(sug, true)}
+                        >
+                          <span className="suggestion-item-title">
+                            {sug.name}{sug.admin1 ? `, ${sug.admin1}` : ''}{sug.country ? `, ${sug.country}` : ''}
+                          </span>
+                          <span className="suggestion-item-subtitle">
+                            Lat: {sug.latitude.toFixed(4)}, Lon: {sug.longitude.toFixed(4)} | TZ: {sug.timezone || 'UTC'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <button 
                   type="button" 
                   onClick={handleDetectPartnerLocation} 
                   className="btn btn-secondary" 
                   style={{ padding: '8px 12px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}
                 >
-                  📍 Detect Partner's Location
+                  📍 Detect Partner's Location (GPS)
                 </button>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
